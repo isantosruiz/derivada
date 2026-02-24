@@ -163,7 +163,7 @@ INDEX_HTML = r"""
       }
 
       .step-title {
-        font-weight: 700;
+        font-weight: 500;
         font-family: "IBM Plex Sans", "Segoe UI", sans-serif;
         letter-spacing: 0.01em;
       }
@@ -271,7 +271,7 @@ INDEX_HTML = r"""
             .map(
               (step) => `
                 <li>
-                  <div class="step-title">${step.title}</div>
+                  <div class="step-title">${step.title}:</div>
                   <div class="math-line">\\[ ${step.latex} \\]</div>
                 </li>
               `
