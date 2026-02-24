@@ -406,12 +406,26 @@ def _build_derivation(
     display_anchor_latex = sp.latex(display_anchor)
     calc_anchor_latex = sp.latex(calc_anchor)
     variable_latex = sp.latex(variable)
+    definition_minuend_latex = rf"\textcolor{{red}}{{f({display_anchor_latex}+{delta_latex})}}"
+    definition_subtrahend_latex = rf"\textcolor{{blue}}{{f({display_anchor_latex})}}"
     minuend_latex = rf"f({calc_anchor_latex}+{delta_latex})"
     subtrahend_latex = rf"f({calc_anchor_latex})"
-    quotient_raw_latex = _disambiguate_delta_terms(
-        _latex(quotient_raw, delta_latex),
+    substitution_minuend_latex = rf"\textcolor{{red}}{{{minuend_latex}}}"
+    substitution_subtrahend_latex = rf"\textcolor{{blue}}{{{subtrahend_latex}}}"
+    evaluated_minuend_latex = _disambiguate_delta_terms(
+        _latex(expr_anchor_plus_delta, delta_latex),
         delta_latex,
         variable_latex,
+    )
+    evaluated_subtrahend_latex = _disambiguate_delta_terms(
+        _latex(expr_anchor, delta_latex),
+        delta_latex,
+        variable_latex,
+    )
+    colored_evaluated_minuend_latex = rf"\color{{red}}{{{evaluated_minuend_latex}}}"
+    colored_evaluated_subtrahend_latex = rf"\color{{blue}}{{{evaluated_subtrahend_latex}}}"
+    quotient_evaluated_unsimplified_latex = (
+        rf"\frac{{\left.{colored_evaluated_minuend_latex}\right.-\left({colored_evaluated_subtrahend_latex}\right)}}{{{delta_latex}}}"
     )
     quotient_simplified_latex = _disambiguate_delta_terms(
         _latex(quotient_simplified, delta_latex),
@@ -432,7 +446,7 @@ def _build_derivation(
                 rf"\lim_{{{delta_latex} \to 0}}"
                 rf"\frac{{\Delta f}}{{{delta_latex}}} = "
                 rf"\lim_{{{delta_latex} \to 0}} "
-                rf"\frac{{f({display_anchor_latex}+{delta_latex})-f({display_anchor_latex})}}{{{delta_latex}}}"
+                rf"\frac{{{definition_minuend_latex}\textcolor{{black}}{{-}}{definition_subtrahend_latex}}}{{{delta_latex}}}"
             ),
         }
     ]
@@ -446,7 +460,7 @@ def _build_derivation(
                     rf"\lim_{{{delta_latex} \to 0}}"
                     rf"\frac{{\Delta f}}{{{delta_latex}}} = "
                     rf"\lim_{{{delta_latex} \to 0}}"
-                    rf"\frac{{{minuend_latex} - {subtrahend_latex}}}{{{delta_latex}}}"
+                    rf"\frac{{{substitution_minuend_latex}\textcolor{{black}}{{-}}{substitution_subtrahend_latex}}}{{{delta_latex}}}"
                 ),
             }
         )
@@ -455,7 +469,10 @@ def _build_derivation(
         [
             {
                 "title": "Simplificación del cociente de incrementos",
-                "latex": rf"\frac{{\Delta f}}{{ {delta_latex} }} = {quotient_raw_latex} = {quotient_simplified_latex}",
+                "latex": (
+                    rf"\frac{{\Delta f}}{{ {delta_latex} }} = "
+                    rf"{quotient_evaluated_unsimplified_latex} = {quotient_simplified_latex}"
+                ),
             },
             {
                 "title": "Aplicación del límite",
