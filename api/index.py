@@ -21,10 +21,18 @@ TRANSFORMATIONS = standard_transformations + (
 GLOBAL_DICT = dict(sp.__dict__)
 GLOBAL_DICT["__builtins__"] = {}
 
+
+def _log10(expr: sp.Expr) -> sp.Expr:
+    return sp.log(expr, 10)
+
+
 COMMON_LOCALS = {
     "pi": sp.pi,
     "e": sp.E,
     "E": sp.E,
+    "sen": sp.sin,
+    "ln": sp.log,
+    "log10": _log10,
     "oo": sp.oo,
 }
 
@@ -107,6 +115,12 @@ INDEX_HTML = r"""
       label {
         font-weight: 600;
         letter-spacing: 0.01em;
+      }
+
+      .input-hint {
+        margin: 0.5rem 0 0;
+        font-size: 0.92rem;
+        color: #5b4b3a;
       }
 
       input {
@@ -199,6 +213,7 @@ INDEX_HTML = r"""
           <div>
             <label for="function">Función \(f\)</label>
             <input id="function" name="function" placeholder="Ej: x^2 + 5*x + 6" required />
+            <p class="input-hint">Usa <code>pi</code> para \( π \) y <code>e</code> para el número de Euler \( e \). Escribe funciones en minúsculas: <code>exp()</code>, <code>sqrt()</code>, <code>sin()</code> o <code>sen()</code>, <code>log()</code>, etc. Tanto <code>ln()</code> como <code>log()</code> representan el logaritmo natural; <code>log10()</code> representa el logaritmo decimal.</p>
           </div>
 
           <div>
@@ -303,7 +318,11 @@ INDEX_HTML = r"""
 """
 
 
-def _parse_math(text: str, extra_locals: dict[str, Any] | None = None) -> sp.Expr:
+def _parse_math(
+    text: str,
+    extra_locals: dict[str, Any] | None = None,
+    evaluate: bool = True,
+) -> sp.Expr:
     local_dict = dict(COMMON_LOCALS)
     if extra_locals:
         local_dict.update(extra_locals)
@@ -312,7 +331,7 @@ def _parse_math(text: str, extra_locals: dict[str, Any] | None = None) -> sp.Exp
         local_dict=local_dict,
         global_dict=GLOBAL_DICT,
         transformations=TRANSFORMATIONS,
-        evaluate=True,
+        evaluate=evaluate,
     )
 
 
@@ -527,7 +546,8 @@ def derive():
         return jsonify({"error": "Debes indicar una función."}), 400
 
     try:
-        function_expr = sp.simplify(_parse_math(function_text))
+        function_expr_display = _parse_math(function_text, evaluate=False)
+        function_expr = sp.simplify(_parse_math(function_text, evaluate=True))
         variable, inferred = _choose_variable(function_expr, variable_text)
         derivation = _build_derivation(function_expr, variable, point_text)
     except Exception as error:
@@ -535,7 +555,7 @@ def derive():
 
     return jsonify(
         {
-            "input_function_latex": _latex(function_expr),
+            "input_function_latex": _latex(function_expr_display),
             "variable": variable.name,
             "variable_latex": sp.latex(variable),
             "inferred_variable": inferred,
