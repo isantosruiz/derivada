@@ -191,6 +191,78 @@ INDEX_HTML = r"""
         font-size: 1.05rem;
         margin: 1.2rem 0 0.4rem;
       }
+
+      .report-actions {
+        display: flex;
+        align-items: center;
+        gap: 0.7rem;
+        margin-top: 1rem;
+      }
+
+      .report-print-btn {
+        border: 1px solid #c9c0ae;
+        border-radius: 10px;
+        padding: 0.58rem 1rem;
+        background: linear-gradient(135deg, #f8f2e7, #fffaf0);
+        color: #5f3f2b;
+        font-size: 0.96rem;
+        font-weight: 600;
+        cursor: pointer;
+      }
+
+      .report-print-btn:hover {
+        background: linear-gradient(135deg, #f3e9da, #fdf4e7);
+      }
+
+      .report-title {
+        margin: 0 0 0.8rem;
+      }
+
+      .report-copyright {
+        margin-top: 1rem;
+        font-size: 0.93rem;
+        color: #5b4b3a;
+        text-align: center;
+      }
+
+      .report-copyright p {
+        margin: 0;
+      }
+
+      .report-copyright a {
+        color: inherit;
+        text-decoration: none;
+      }
+
+      .print-only {
+        display: none;
+      }
+
+      @media print {
+        body {
+          background: #ffffff;
+        }
+
+        .no-print {
+          display: none !important;
+        }
+
+        main {
+          max-width: 100%;
+          margin: 0;
+          padding: 0 0.25in;
+        }
+
+        .card {
+          box-shadow: none;
+          page-break-inside: avoid;
+          break-inside: avoid-page;
+        }
+
+        .print-only {
+          display: block;
+        }
+      }
     </style>
     <script>
       window.MathJax = {
@@ -202,10 +274,20 @@ INDEX_HTML = r"""
       };
     </script>
     <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+    <script>
+      function printReportPdf() {
+        const doPrint = () => window.print();
+        if (window.MathJax && typeof window.MathJax.typesetPromise === "function") {
+          window.MathJax.typesetPromise().then(doPrint).catch(doPrint);
+          return;
+        }
+        doPrint();
+      }
+    </script>
   </head>
   <body>
     <main>
-      <section class="card">
+      <section class="card no-print">
         <h1>Derivación paso a paso</h1>
         <p class="note">Introduce una función. El asistente mostrará el cociente de incrementos, su límite y la derivada.</p>
 
@@ -213,7 +295,10 @@ INDEX_HTML = r"""
           <div>
             <label for="function">Función \(f\)</label>
             <input id="function" name="function" placeholder="Ej: x^2 + 5*x + 6" required />
-            <p class="input-hint">Usa <code>pi</code> para \( π \) y <code>e</code> para el número de Euler \( e \). Escribe funciones en minúsculas: <code>exp()</code>, <code>sqrt()</code>, <code>sin()</code> o <code>sen()</code>, <code>log()</code>, etc. Tanto <code>ln()</code> como <code>log()</code> representan el logaritmo natural; <code>log10()</code> representa el logaritmo decimal.</p>
+            <p class="input-hint">Escribe <code>pi</code> para \( π \) y <code>e</code> para el número de Euler \( e \).</p>
+            <!--
+            <p class="input-hint">Escribe funciones en minúsculas: <code>exp()</code>, <code>sqrt()</code>, <code>sin()</code> o <code>sen()</code>, <code>log()</code>, etc. Tanto <code>ln()</code> como <code>log()</code> representan el logaritmo natural; <code>log10()</code> representa el logaritmo decimal.</p>
+            -->
           </div>
 
           <div>
@@ -231,9 +316,18 @@ INDEX_HTML = r"""
       </section>
 
       <section class="card steps-card" id="steps-card" hidden>
+        <h1 class="report-title print-only">Derivación paso a paso</h1>
         <section class="result" id="result"></section>
+        <div class="report-actions no-print" id="report-actions" hidden>
+          <button class="report-print-btn" type="button" onclick="printReportPdf()">
+            Imprimir reporte PDF
+          </button>
+        </div>
       </section>
-      <div id="copyright">
+      <div class="report-copyright print-only">
+        <p>&copy; 2026, <a href="https://isantosruiz.github.io/home/">Ildeberto de los Santos Ruiz</a></p>
+      </div>
+      <div id="copyright" class="no-print">
         <p>&copy; 2026, <a href="https://isantosruiz.github.io/home/" style="text-decoration: none;">Ildeberto de los Santos Ruiz</a></p>
       </div>
 
@@ -243,6 +337,7 @@ INDEX_HTML = r"""
       const form = document.getElementById("derive-form");
       const stepsCard = document.getElementById("steps-card");
       const result = document.getElementById("result");
+      const reportActions = document.getElementById("report-actions");
 
       function renderMath() {
         if (window.MathJax && window.MathJax.typesetPromise) {
@@ -260,6 +355,7 @@ INDEX_HTML = r"""
         };
 
         stepsCard.hidden = false;
+        reportActions.hidden = true;
         result.innerHTML = "<p>Calculando...</p>";
 
         try {
@@ -275,7 +371,7 @@ INDEX_HTML = r"""
           }
 
           const inferredText = data.inferred_variable
-            ? `<p><em>Variable deducida automáticamente: <code>${data.variable}</code>.</em></p>`
+            ? `<p class="no-print"><em>Variable deducida automáticamente: \\(${data.variable_latex}\\)</em></p>`
             : "";
 
           const requestLine = data.point_latex
@@ -306,8 +402,10 @@ INDEX_HTML = r"""
             </section>
           `;
 
+          reportActions.hidden = false;
           renderMath();
         } catch (error) {
+          reportActions.hidden = true;
           result.innerHTML = `<p class="error">${error.message}</p>`;
           renderMath();
         }
@@ -335,6 +433,43 @@ def _parse_math(
     )
 
 
+def _cleanup_display_expr(expr: sp.Expr) -> sp.Expr:
+    if expr.is_Atom:
+        return expr
+
+    if expr.is_Mul:
+        args = [_cleanup_display_expr(arg) for arg in expr.args if arg != 1]
+        if not args:
+            return sp.Integer(1)
+        if len(args) == 1:
+            return args[0]
+        return sp.Mul(*args, evaluate=False)
+
+    if expr.is_Add:
+        args = [_cleanup_display_expr(arg) for arg in expr.args if arg != 0]
+        if not args:
+            return sp.Integer(0)
+        if len(args) == 1:
+            return args[0]
+        return sp.Add(*args, evaluate=False)
+
+    if expr.is_Pow:
+        return sp.Pow(
+            _cleanup_display_expr(expr.base),
+            _cleanup_display_expr(expr.exp),
+            evaluate=False,
+        )
+
+    if expr.args:
+        new_args = [_cleanup_display_expr(arg) for arg in expr.args]
+        try:
+            return expr.func(*new_args)
+        except Exception:
+            return expr
+
+    return expr
+
+
 def _choose_variable(expr: sp.Expr, raw_variable: str | None) -> tuple[sp.Symbol, bool]:
     variable_text = (raw_variable or "").strip()
     if variable_text:
@@ -358,10 +493,19 @@ def _point_symbol(variable: sp.Symbol) -> sp.Symbol:
     return sp.Symbol(f"{variable.name}_0")
 
 
-def _latex(expr: sp.Expr, delta_latex: str | None = None) -> str:
-    if delta_latex is None:
+def _latex(
+    expr: sp.Expr,
+    delta_latex: str | None = None,
+    symbol_names_extra: dict[sp.Symbol, str] | None = None,
+) -> str:
+    symbol_names: dict[sp.Symbol, str] = {}
+    if delta_latex is not None:
+        symbol_names[DELTA] = delta_latex
+    if symbol_names_extra:
+        symbol_names.update(symbol_names_extra)
+    if not symbol_names:
         return sp.latex(expr)
-    return sp.latex(expr, symbol_names={DELTA: delta_latex})
+    return sp.latex(expr, symbol_names=symbol_names)
 
 
 def _disambiguate_delta_terms(
@@ -382,8 +526,35 @@ def _disambiguate_delta_terms(
     return factor_pattern.sub(lambda _: rf"\left({delta_latex}\right)", formatted)
 
 
+def _force_displaystyle_fractions(latex_text: str) -> str:
+    return latex_text.replace(r"\frac", r"\displaystyle\frac")
+
+
+def _colored_signed_sum_latex(
+    expr: sp.Expr,
+    color: str,
+    delta_latex: str,
+    variable_latex: str,
+) -> str:
+    expanded = sp.expand(expr)
+    terms = expanded.as_ordered_terms() if expanded.is_Add else [expanded]
+    parts: list[str] = []
+    for term in terms:
+        is_negative = term.could_extract_minus_sign()
+        magnitude = -term if is_negative else term
+        magnitude_latex = _disambiguate_delta_terms(
+            _latex(magnitude, delta_latex),
+            delta_latex,
+            variable_latex,
+        )
+        sign = "-" if is_negative else "+"
+        parts.append(rf"{sign}\color{{{color}}}{{{magnitude_latex}}}")
+    return "".join(parts)
+
+
 def _build_derivation(
     expr: sp.Expr,
+    expr_display: sp.Expr,
     variable: sp.Symbol,
     raw_point: str | None,
 ) -> dict[str, Any]:
@@ -425,26 +596,67 @@ def _build_derivation(
     display_anchor_latex = sp.latex(display_anchor)
     calc_anchor_latex = sp.latex(calc_anchor)
     variable_latex = sp.latex(variable)
+    display_minuend_symbol = sp.Symbol("__display_minuend__")
+    display_minuend_expr = expr_display.xreplace({variable: display_minuend_symbol})
+    display_minuend_latex = _force_displaystyle_fractions(
+        _disambiguate_delta_terms(
+            _latex(
+                display_minuend_expr,
+                delta_latex,
+                symbol_names_extra={
+                    display_minuend_symbol: rf"\left({calc_anchor_latex}+{delta_latex}\right)"
+                },
+            ),
+            delta_latex,
+            variable_latex,
+        ),
+    )
     definition_minuend_latex = rf"\textcolor{{red}}{{f({display_anchor_latex}+{delta_latex})}}"
     definition_subtrahend_latex = rf"\textcolor{{blue}}{{f({display_anchor_latex})}}"
     minuend_latex = rf"f({calc_anchor_latex}+{delta_latex})"
     subtrahend_latex = rf"f({calc_anchor_latex})"
     substitution_minuend_latex = rf"\textcolor{{red}}{{{minuend_latex}}}"
     substitution_subtrahend_latex = rf"\textcolor{{blue}}{{{subtrahend_latex}}}"
-    evaluated_minuend_latex = _disambiguate_delta_terms(
-        _latex(expr_anchor_plus_delta, delta_latex),
+    evaluated_minuend_latex = _force_displaystyle_fractions(
+        _disambiguate_delta_terms(
+            _latex(sp.expand(expr_anchor_plus_delta), delta_latex),
+            delta_latex,
+            variable_latex,
+        )
+    )
+    evaluated_subtrahend_latex = _force_displaystyle_fractions(
+        _disambiguate_delta_terms(
+            _latex(expr_anchor, delta_latex),
+            delta_latex,
+            variable_latex,
+        )
+    )
+    negated_subtrahend_latex = _disambiguate_delta_terms(
+        _latex(sp.expand(-expr_anchor), delta_latex),
         delta_latex,
         variable_latex,
     )
-    evaluated_subtrahend_latex = _disambiguate_delta_terms(
-        _latex(expr_anchor, delta_latex),
-        delta_latex,
-        variable_latex,
-    )
-    colored_evaluated_minuend_latex = rf"\color{{red}}{{{evaluated_minuend_latex}}}"
+    colored_display_minuend_latex = rf"\textcolor{{red}}{{{display_minuend_latex}}}"
+    colored_evaluated_minuend_latex = rf"\textcolor{{red}}{{{evaluated_minuend_latex}}}"
     colored_evaluated_subtrahend_latex = rf"\color{{blue}}{{{evaluated_subtrahend_latex}}}"
-    quotient_evaluated_unsimplified_latex = (
-        rf"\frac{{\left.{colored_evaluated_minuend_latex}\right.-\left({colored_evaluated_subtrahend_latex}\right)}}{{{delta_latex}}}"
+    first_line_subtrahend_latex = (
+        rf"\left({colored_evaluated_subtrahend_latex}\right)"
+        if expr_anchor.is_Add
+        else colored_evaluated_subtrahend_latex
+    )
+    colored_negated_subtrahend_sum_latex = _force_displaystyle_fractions(
+        _colored_signed_sum_latex(
+            sp.expand(-expr_anchor),
+            "blue",
+            delta_latex,
+            variable_latex,
+        )
+    )
+    quotient_substitution_latex = (
+        rf"\displaystyle\frac{{{colored_display_minuend_latex}\textcolor{{black}}{{-}}{first_line_subtrahend_latex}}}{{{delta_latex}}}"
+    )
+    quotient_evaluated_functions_latex = (
+        rf"\displaystyle\frac{{{colored_evaluated_minuend_latex}{colored_negated_subtrahend_sum_latex}}}{{{delta_latex}}}"
     )
     quotient_simplified_latex = _disambiguate_delta_terms(
         _latex(quotient_simplified, delta_latex),
@@ -489,8 +701,11 @@ def _build_derivation(
             {
                 "title": "Simplificación del cociente de incrementos",
                 "latex": (
-                    rf"\frac{{\Delta f}}{{ {delta_latex} }} = "
-                    rf"{quotient_evaluated_unsimplified_latex} = {quotient_simplified_latex}"
+                    rf"\begin{{aligned}}"
+                    rf"\displaystyle\frac{{\Delta f}}{{ {delta_latex} }} &= {quotient_substitution_latex} \\[1.25ex] "
+                    rf"&= {quotient_evaluated_functions_latex} \\[1.25ex] "
+                    rf"&= {quotient_simplified_latex}"
+                    rf"\end{{aligned}}"
                 ),
             },
             {
@@ -546,10 +761,12 @@ def derive():
         return jsonify({"error": "Debes indicar una función."}), 400
 
     try:
-        function_expr_display = _parse_math(function_text, evaluate=False)
+        function_expr_display = _cleanup_display_expr(
+            _parse_math(function_text, evaluate=False)
+        )
         function_expr = sp.simplify(_parse_math(function_text, evaluate=True))
         variable, inferred = _choose_variable(function_expr, variable_text)
-        derivation = _build_derivation(function_expr, variable, point_text)
+        derivation = _build_derivation(function_expr, function_expr_display, variable, point_text)
     except Exception as error:
         return jsonify({"error": f"Entrada inválida: {error}"}), 400
 
