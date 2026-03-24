@@ -184,6 +184,7 @@ INDEX_HTML = r"""
 
       #copyright { margin-top: 0.95rem; color: var(--muted); font-size: 0.95rem; display: flex; justify-content: center; text-align: center; }
       #copyright p { margin: 0; }
+      #copyright a { color: inherit; text-decoration: none; }
 
       .context-block h2,
       .steps-block h2 {
@@ -328,7 +329,7 @@ INDEX_HTML = r"""
         <p>&copy; 2026, <a href="https://isantosruiz.github.io/home/">Ildeberto de los Santos Ruiz</a></p>
       </div>
       <div id="copyright" class="no-print">
-        <p>&copy; 2026, <a href="https://isantosruiz.github.io/home/" style="text-decoration: none;">Ildeberto de los Santos Ruiz</a></p>
+        <p>&copy; 2026, <a href="https://isantosruiz.github.io/home/">Ildeberto de los Santos Ruiz</a></p>
       </div>
 
     </main>
